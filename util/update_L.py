@@ -3,13 +3,15 @@ from util.t2m import t2m
 from util.m2t import m2t
 import numpy as np
 
-def update_L(Lx, L, X, Lambda, Phi, alpha, theta, lrn_rate = 1, step=0.01, num_iter = 100, track_fval = False):
+def update_L(Lx, L, X, Lambda, Phi, alpha, theta, lrn_rate = 1, step=0.05, num_iter = 100, track_fval = False):
     """ Update function for variable Lx. 
     Current version uses gradient descent for the update. 
-    ! Needs to be checked.
     """
     n = len(Lx)
     fval = []
+    fval_L = []
+    fval_X = []
+    fval_comm = []
     Phisq = []
     Xmat = []
     Lagrangians = []
@@ -25,18 +27,22 @@ def update_L(Lx, L, X, Lambda, Phi, alpha, theta, lrn_rate = 1, step=0.01, num_i
             Lmat = t2m(Lx[i], i)
             grad = (theta[i]*((Lmat @ Xmat[i].transpose() @ Phisq[i]) @ Xmat[i] +
             (Phisq[i] @ Lmat @ Xmat[i].transpose()) @ Xmat[i] -
-            (Phi[i] @ Lmat @ Xmat[i].transpose() @ Phi[i]) @ Xmat[i]) + 
+            2*(Phi[i] @ Lmat @ Xmat[i].transpose() @ Phi[i]) @ Xmat[i]) + 
             (alpha[0][i]+alpha[1][i])*Lmat - Lagrangians[i])
             
             Lx[i] = m2t(Lmat - step*grad, Lx[i].shape, i)
 
-        if x%10 == 9:
+        if x%20 == 19:
             step *= lrn_rate
 
         if track_fval:
-            fval.append(fn_val_L(Lx,L,X,Lambda,Phi,alpha,theta)[0])
+            fvals = fn_val_L(Lx,L,X,Lambda,Phi,alpha,theta)
+            fval.append(fvals[0])
+            fval_L.append(fvals[1])
+            fval_X.append(fvals[2])
+            fval_comm.append(fvals[3])
             
-    return Lx, fval
+    return Lx, fval, fval_L, fval_X, fval_comm
 
 def fn_val_L(Lx, L, X, Lambda, Phi, alpha, theta):
     n = len(Lx)
