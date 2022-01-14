@@ -12,21 +12,21 @@ def update_Sigma(Sigma, Lx, X, Phi, Lambda, alpha, theta, track_fval = False):
 
     for i in range(n):
         c = alpha[i]/theta[i]
-        I = [np.identity(Sigma[i].shape[0]), np.identity(Sigma[i].shape[1])]
+        I = [np.identity(Sigma[i].shape[0]), np.identity(Sigma[i].shape[1]), np.identity(Phi[i].size)]
         Psq = Phi[i]@Phi[i]
-        invmat = np.kron(Psq, I[0])-2*np.kron(Phi[i], Phi[i])+np.kron(I[1], Psq) + c*np.identity(Phi[i].size)
+        invmat = np.kron(Psq, I[0])-2*np.kron(Phi[i], Phi[i])+np.kron(I[1], Psq) + c*I[2]
         invmat = c * np.linalg.inv(invmat)
         Lag = t2m(Lx[i],i)@t2m(X[i],i).transpose()-Lambda[i]
         vecSig = np.tensordot(invmat, np.ravel(Lag, order = 'F'), axes=([1],[0]))
         Sigma[i] = vecSig.reshape(Phi[i].shape)
 
     if track_fval:
-        fval, fval_sig, fval_comm = fn_val_L(Sigma, Lx, X, Phi, Lambda, alpha, theta)
+        fval, fval_sig, fval_comm = fn_val(Sigma, Lx, X, Phi, Lambda, alpha, theta)
 
     return Sigma, fval, fval_sig, fval_comm
 
 
-def fn_val_L(Sigma, Lx, X, Phi, Lambda, alpha, theta):
+def fn_val(Sigma, Lx, X, Phi, Lambda, alpha, theta):
     n = len(Sigma)
 
     covs = [t2m(Lx[i],i)@t2m(X[i],i).transpose() for i in range(n)]

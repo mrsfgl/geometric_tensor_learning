@@ -12,9 +12,9 @@ def update_L(Lx, L, X, Lambda, Sigma, alpha, track_fval = False):
     for i in range(n):
         Xmat = t2m(X[i], i)
 
-        c = (alpha[2][i]/(alpha[0][i]+alpha[1][i])) # temporary constant
-        A = c*np.identity(Xmat.shape[1])/alpha[2][i]
-        invmat = np.linalg.inv(np.identity(Xmat.shape[0]) + c*Xmat@Xmat.transpose())/alpha[2][i]
+        c = 1/(alpha[0][i]+alpha[1][i]) # temporary constant
+        A = c*np.identity(Xmat.shape[1])
+        invmat = np.linalg.inv(np.identity(Xmat.shape[0])/alpha[2][i] + c*Xmat@Xmat.transpose())*c**2
         inverse_mat = A - Xmat.transpose() @ invmat @ Xmat
 
         Lmat = alpha[0][i] * t2m(L-Lambda[0][i], i)

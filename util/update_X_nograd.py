@@ -12,21 +12,24 @@ def update_X(X, Lx, Lambda, Sigma, alpha, track_fval = False):
     for i in range(n):
         Lmat = t2m(Lx[i], i)
 
-        A = np.identity(Lmat.shape[1])/alpha[0][i]
-        invmat = np.linalg.inv(np.identity(Lmat.shape[0])+Lmat@Lmat.transpose()*alpha[1][i]/alpha[0][i])/alpha[1][i]
-        inverse_mat = A-Lmat.transpose()@invmat@Lmat
+        A_inv = np.identity(Lmat.shape[1])/alpha[0][i]
+        U = Lmat.transpose()
+        V = Lmat
+        B_inv = np.identity(Lmat.shape[0])/alpha[1][i]
+        invmat = np.linalg.inv(B_inv+V@U/alpha[0][i])
+        inverse_mat = A_inv-U@invmat@V/(alpha[0][i]**2)
 
         Xmat_Lag = alpha[0][i] * t2m(Lx[i]-Lambda[0][i], i)
         Sigmat = alpha[1][i] * ((Sigma[i]+Lambda[1][i]).transpose() @ Lmat)
         Lagrangian = Xmat_Lag + Sigmat
-        Lx[i] = m2t(Lagrangian @ inverse_mat, X[i].shape, i)
+        X[i] = m2t(Lagrangian @ inverse_mat, X[i].shape, i)
 
     if track_fval:
         fval, fval_X, fval_sig = fn_val(X,Lx,Lambda,Sigma,alpha)
             
-    return Lx, fval, fval_X, fval_sig
+    return X, fval, fval_X, fval_sig
 
-def fn_val(X, Lx,Lambda, Sigma, alpha):
+def fn_val(X, Lx, Lambda, Sigma, alpha):
     n = len(X)
     val_X = [alpha[0][i]*norm(X[i]+Lambda[0][i]-Lx[i])**2 for i in range(n)]
 
