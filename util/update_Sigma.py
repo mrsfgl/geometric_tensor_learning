@@ -12,16 +12,18 @@ def update_Sigma(Sigma, Lx, X, Phi, Lambda, alpha, theta, track_fval = False):
 
     for i in range(n):
         c = alpha[i]/theta[i]
-        I = [np.identity(Sigma[i].shape[0]), np.identity(Sigma[i].shape[1]), np.identity(Phi[i].size)]
+        A = np.ravel(t2m(Lx[i],i)@t2m(X[i],i).transpose()-Lambda[i], order = 'F')
+
+        I = [np.identity(Sigma[i].shape[0]), np.identity(Sigma[i].shape[1]), np.identity(Sigma[i].size)]
         Psq = Phi[i]@Phi[i]
         invmat = np.kron(Psq, I[0])-2*np.kron(Phi[i], Phi[i])+np.kron(I[1], Psq) + c*I[2]
-        invmat = c * np.linalg.inv(invmat)
-        Lag = t2m(Lx[i],i)@t2m(X[i],i).transpose()-Lambda[i]
-        vecSig = np.tensordot(invmat, np.ravel(Lag, order = 'F'), axes=([1],[0]))
-        Sigma[i] = vecSig.reshape(Phi[i].shape)
-
-    if track_fval:
-        fval, fval_sig, fval_comm = fn_val(Sigma, Lx, X, Phi, Lambda, alpha, theta)
+        # vecSig = np.ravel(Sigma[i], order = 'F')
+        # theta[i]*vecSig@np.tensordot(invmat, vecSig, axes=([1],[0])) - 2*alpha[i]* sum(vecSig * A) + (alpha[i]**2)*sum(A**2)
+        invmat = np.linalg.inv(invmat)
+        vecSig = np.tensordot(invmat, c*A, axes=([1],[0]))
+        Sigma[i] = vecSig.reshape(Phi[i].shape).transpose()
+    
+    fval, fval_sig, fval_comm = fn_val(Sigma, Lx, X, Phi, Lambda, alpha, theta) if track_fval else []
 
     return Sigma, fval, fval_sig, fval_comm
 

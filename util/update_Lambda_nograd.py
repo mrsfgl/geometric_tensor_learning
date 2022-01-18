@@ -7,15 +7,13 @@ def update_Lambda(Lambda, L, Lx, X, G, Sigma, track_fval = False):
     ! Needs to be checked.
     """
     n = len(Lx)
-    fval = []
-    
     Lambda[0] = [Lambda[0][i]+G[i]-L for i in range(n)]
     Lambda[1] = [Lambda[1][i]+Lx[i]-L for i in range(n)]
     Lambda[2] = [Lambda[2][i]+X[i]-Lx[i] for i in range(n)]
     Lambda[3] = [Lambda[3][i]+Sigma[i]-t2m(Lx[i],i)@t2m(X[i],i).transpose() for i in range(n)]
 
-    if track_fval:
-        fval = fn_val_Lambda(Lambda, L, Lx, G)[0]
+    fval = fn_val_Lambda(Lambda, L, Lx, G)[0] if track_fval else []
+
     return Lambda, fval
 
 

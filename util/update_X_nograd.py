@@ -24,8 +24,7 @@ def update_X(X, Lx, Lambda, Sigma, alpha, track_fval = False):
         Lagrangian = Xmat_Lag + Sigmat
         X[i] = m2t(Lagrangian @ inverse_mat, X[i].shape, i)
 
-    if track_fval:
-        fval, fval_X, fval_sig = fn_val(X,Lx,Lambda,Sigma,alpha)
+    fval, fval_X, fval_sig = fn_val(X,Lx,Lambda,Sigma,alpha) if track_fval else []
             
     return X, fval, fval_X, fval_sig
 

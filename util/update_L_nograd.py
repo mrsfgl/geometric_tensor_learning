@@ -23,8 +23,7 @@ def update_L(Lx, L, X, Lambda, Sigma, alpha, track_fval = False):
         Lagrangian = Lmat+Xmat_Lag+Sigmat
         Lx[i] = m2t(Lagrangian @ inverse_mat, X[i].shape, i)
 
-    if track_fval:
-        fval, fval_L, fval_X, fval_sig = fn_val(Lx,L,X,Lambda,Sigma,alpha)
+    fval, fval_L, fval_X, fval_sig = fn_val(Lx,L,X,Lambda,Sigma,alpha) if track_fval else []
             
     return Lx, fval, fval_L, fval_X, fval_sig
 
