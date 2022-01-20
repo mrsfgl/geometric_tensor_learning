@@ -1,4 +1,3 @@
-from tabnanny import verbose
 import numpy as np
 from numpy.linalg import norm
 from util.soft_hosvd import soft_hosvd
@@ -82,7 +81,7 @@ def init(Y, psi, beta, alpha):
     psi = [psi for i in range(n)] if len(psi)==1 else psi
     beta = np.sqrt(max(sizes)) if not beta else beta
     std_Y = np.std(Y.ravel())
-    alpha = [1/5*std_Y for i in range(n)] if not alpha else alpha
+    alpha = [1/5*std_Y for i in range(n)] if len(alpha)==0 else alpha
 
     # Initialize tensor variables.
     Lx = [np.zeros(sizes) for i in range(n)]
