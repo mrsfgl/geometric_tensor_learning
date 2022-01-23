@@ -2,13 +2,16 @@ import numpy as np
 from numpy.linalg import norm
 from util.soft_hosvd import soft_hosvd
 
-def horpca(Y, psi=1, beta=[], alpha=[], max_iter = 100, err_tol = 10**-5, verbose=False):
+
+def horpca(Y, psi=1, beta=[], alpha=[], max_iter=100, err_tol=10**-5,
+           verbose=False):
     ''' Higher Order Robust PCA
     Runs the ADMM algorithm for HoRPCA
 
     The original paper for this algorithm is by:
-    Goldfarb, Donald, and Zhiwei Qin. "Robust low-rank tensor recovery: Models and algorithms." 
-        SIAM Journal on Matrix Analysis and Applications 35.1 (2014): 225-253.
+    Goldfarb, Donald, and Zhiwei Qin. "Robust low-rank tensor recovery: Models
+        and algorithms." SIAM Journal on Matrix Analysis and Applications
+        35.1 (2014): 225-253.
     '''
     sizes = Y.shape
     n = len(sizes)
@@ -20,50 +23,52 @@ def horpca(Y, psi=1, beta=[], alpha=[], max_iter = 100, err_tol = 10**-5, verbos
     obj_val = []
     terms = []
     nuc_norm = [0 for _ in range(n)]
-    val, term = compute_obj(Y,L,Lx,S,Lambda,psi,beta,alpha,nuc_norm)
-    while iter!=max_iter and err>err_tol:
+    val, term = compute_obj(Y, L, Lx, S, Lambda, psi, beta, alpha, nuc_norm)
+    while iter != max_iter and err > err_tol:
         # L Update
-        L = update_L(Y,S,Lx,Lambda,alpha)
-        val, term = compute_obj(Y,L,Lx,S,Lambda,psi,beta,alpha,nuc_norm)
+        L = update_L(Y, S, Lx, Lambda, alpha)
+        # val, term = compute_obj(Y,L,Lx,S,Lambda,psi,beta,alpha,nuc_norm)
 
         # Lx Update
         Lx, nuc_norm = soft_hosvd(L, Lambda[1], psi, 1/alpha[1])
-        val, term = compute_obj(Y,L,Lx,S,Lambda,psi,beta,alpha,nuc_norm)
+        # val, term = compute_obj(Y,L,Lx,S,Lambda,psi,beta,alpha,nuc_norm)
 
         # S Update
         S_old = S.copy()
         S = soft_threshold(Y-L-Lambda[0], beta/alpha[0])
-        val, term = compute_obj(Y,L,Lx,S,Lambda,psi,beta,alpha,nuc_norm)
+        # val, term = compute_obj(Y,L,Lx,S,Lambda,psi,beta,alpha,nuc_norm)
 
         # Dual variable Updates
         Lambda, dual_err = update_Lambda(Y, Lambda, n, L, S, Lx, t_norm)
 
         # Objective and error calculations
-        val, term = compute_obj(Y,L,Lx,S,Lambda,psi,beta,alpha,nuc_norm)
+        # val, term = compute_obj(Y,L,Lx,S,Lambda,psi,beta,alpha,nuc_norm)
         terms.append(term)
         obj_val.append(val)
         err = max(norm(S-S_old)/(np.finfo(float).eps+norm(S_old)), dual_err)
         iter += 1
-        if verbose == True:
-            if err<=err_tol:
+        if verbose:
+            if err <= err_tol:
                 print('Converged!')
-            elif iter==max_iter:
+            elif iter == max_iter:
                 print('Max Iter')
 
     return L, obj_val, np.array(terms)
+
 
 def compute_obj(Y, L, Lx, S, Lambda, psi, beta, alpha, nuc_norm):
     ''' Computes the objective function for HoRPCA. '''
     n = len(Lambda)
 
-    term= [alpha[0]/2*norm(Y-L-S-Lambda[0])**2,0,0,0]
+    term = [alpha[0]/2*norm(Y-L-S-Lambda[0])**2, 0, 0, 0]
     for i in range(n):
         term[1] += nuc_norm[i]
         term[3] += alpha[1]/2*norm(L-Lx[i]-Lambda[1][i])**2
-    
-    term[2] = beta*norm(S.ravel(),ord = 1)
+
+    term[2] = beta*norm(S.ravel(), ord=1)
     val = sum(term)
     return val, term
+
 
 def soft_threshold(T, sigma):
     ''' Soft thresholding of the tensor T with parameter sigma.
@@ -72,16 +77,17 @@ def soft_threshold(T, sigma):
 
     return X*np.sign(T)
 
+
 def init(Y, psi, beta, alpha):
     ''' Initialize variables.'''
     sizes = Y.shape
     n = len(sizes)
 
     # Initialize parameters using recommended choices in the paper.
-    psi = [psi for i in range(n)] if len(psi)==1 else psi
+    psi = [psi for i in range(n)] if len(psi) == 1 else psi
     beta = np.sqrt(max(sizes)) if not beta else beta
     std_Y = np.std(Y.ravel())
-    alpha = [1/5*std_Y for i in range(n)] if len(alpha)==0 else alpha
+    alpha = [1/5*std_Y for i in range(n)] if len(alpha) == 0 else alpha
 
     # Initialize tensor variables.
     Lx = [np.zeros(sizes) for i in range(n)]
@@ -92,6 +98,7 @@ def init(Y, psi, beta, alpha):
         [np.zeros(sizes) for i in range(n)]
     ]
     return L, S, Lx, Lambda, psi, beta, alpha
+
 
 def update_L(Y, S, Lx, Lambda, alpha):
     '''Updates variable L.'''
@@ -104,6 +111,7 @@ def update_L(Y, S, Lx, Lambda, alpha):
     L[Y.mask] = temp2[Y.mask]/(n*alpha[1])
     return L
 
+
 def update_Lambda(Y, Lambda, n, L, S, Lx, t_norm):
     Lambda[0] = Lambda[0]+L+S-Y
     dual_err = 0
@@ -111,6 +119,6 @@ def update_Lambda(Y, Lambda, n, L, S, Lx, t_norm):
         lambda_update = L-Lx[i]
         dual_err += norm(lambda_update)**2
         Lambda[1][i] = Lambda[1][i] - lambda_update
-        
+
     dual_err = np.sqrt(dual_err/n)/t_norm
     return Lambda, dual_err

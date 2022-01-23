@@ -1,7 +1,8 @@
 
 import numpy as np
 
-def contaminate_signal(X, target_SNR = 10, missing_ratio = 0):
+
+def contaminate_signal(X, target_SNR=10, missing_ratio=0):
     ''' Contaminates data with AWGN and random missing elements.
 
     Parameters:
@@ -27,6 +28,6 @@ def contaminate_signal(X, target_SNR = 10, missing_ratio = 0):
     noise = np.sqrt(noise_power)*np.random.standard_normal(sizes)
 
     # Create mask
-    vec_mask = np.random.uniform(size=X.size)-missing_ratio<0
+    vec_mask = np.random.uniform(size=X.size)-missing_ratio < 0
     mask = vec_mask.reshape(sizes)
     return np.ma.array(X+noise, mask=mask)
