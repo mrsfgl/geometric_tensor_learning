@@ -18,7 +18,7 @@ def hosvd(X, rank):
     '''
     sizes = X.shape
     n = len(sizes)
-    Y = X
+    Y = X.copy()
     U_list = []
     for i in range(n):
         U, S, V = np.linalg.svd(t2m(Y, i), full_matrices=False)

@@ -21,6 +21,7 @@ def horpca(Y, psi=1, beta=[], alpha=[], max_iter=100, err_tol=10**-5,
     iter = 0
     err = np.inf
     obj_val = []
+    lam_val = []
     terms = []
     nuc_norm = [0 for _ in range(n)]
     val, term = compute_obj(Y, L, Lx, S, Lambda, psi, beta, alpha, nuc_norm)
@@ -39,12 +40,16 @@ def horpca(Y, psi=1, beta=[], alpha=[], max_iter=100, err_tol=10**-5,
         # val, term = compute_obj(Y,L,Lx,S,Lambda,psi,beta,alpha,nuc_norm)
 
         # Dual variable Updates
-        Lambda, dual_err = update_Lambda(Y, Lambda, n, L, S, Lx, t_norm)
+        (Lambda,
+         dual_err,
+         change_lambda
+         ) = update_Lambda(Y, Lambda, n, L, S, Lx, t_norm)
 
         # Objective and error calculations
         # val, term = compute_obj(Y,L,Lx,S,Lambda,psi,beta,alpha,nuc_norm)
         terms.append(term)
         obj_val.append(val)
+        lam_val.append(change_lambda)
         err = max(norm(S-S_old)/(np.finfo(float).eps+norm(S_old)), dual_err)
         iter += 1
         if verbose:
@@ -53,7 +58,7 @@ def horpca(Y, psi=1, beta=[], alpha=[], max_iter=100, err_tol=10**-5,
             elif iter == max_iter:
                 print('Max Iter')
 
-    return L, obj_val, np.array(terms)
+    return L, obj_val, np.array(terms), lam_val
 
 
 def compute_obj(Y, L, Lx, S, Lambda, psi, beta, alpha, nuc_norm):
@@ -84,10 +89,10 @@ def init(Y, psi, beta, alpha):
     n = len(sizes)
 
     # Initialize parameters using recommended choices in the paper.
-    psi = [psi for i in range(n)] if len(psi) == 1 else psi
+    psi = [psi for i in range(n)] if not hasattr(psi, '__len__') else psi
     beta = np.sqrt(max(sizes)) if not beta else beta
     std_Y = np.std(Y.ravel())
-    alpha = [1/5*std_Y for i in range(n)] if len(alpha) == 0 else alpha
+    alpha = [1/(5*std_Y) for i in range(n)] if len(alpha) == 0 else alpha
 
     # Initialize tensor variables.
     Lx = [np.zeros(sizes) for i in range(n)]
@@ -113,12 +118,16 @@ def update_L(Y, S, Lx, Lambda, alpha):
 
 
 def update_Lambda(Y, Lambda, n, L, S, Lx, t_norm):
-    Lambda[0] = Lambda[0]+L+S-Y
+    lambda_update = L+S-Y
+    Lambda[0] = Lambda[0]+lambda_update
+    change_lambda = norm(lambda_update)
+
     dual_err = 0
     for i in range(n):
         lambda_update = L-Lx[i]
         dual_err += norm(lambda_update)**2
         Lambda[1][i] = Lambda[1][i] - lambda_update
+        change_lambda += norm(lambda_update)
 
     dual_err = np.sqrt(dual_err/n)/t_norm
-    return Lambda, dual_err
+    return Lambda, dual_err, change_lambda

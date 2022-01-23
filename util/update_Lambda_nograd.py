@@ -1,42 +1,44 @@
 from util.t2m import t2m
-from util.m2t import m2t
 import numpy as np
 from numpy.linalg import norm
 
-def update_Lambda(Lambda, L, Lx, X, G, Sigma, track_fval = False):
-    """ Update function for dual variables $\Lambda$.  
+
+def update_Lambda(Lambda, L, Lx, X, G, Sigma, track_fval=False):
+    """ Update function for dual variables Lambda.
     ! Needs to be checked.
     """
     n = len(Lx)
 
     temp = [L-G[i] for i in range(n)]
-    Lambda[0], val_lam_change = up_Lam(Lambda[0],temp)
+    Lambda[0], val_lam_change = up_Lam(Lambda[0], temp)
 
     temp = [L-Lx[i] for i in range(n)]
-    Lambda[1], temp_change = up_Lam(Lambda[1],temp)
+    Lambda[1], temp_change = up_Lam(Lambda[1], temp)
     val_lam_change = val_lam_change+temp_change
 
     temp = [Lx[i]-X[i] for i in range(n)]
-    Lambda[2], temp_change = up_Lam(Lambda[2],temp)
+    Lambda[2], temp_change = up_Lam(Lambda[2], temp)
     val_lam_change = val_lam_change+temp_change
 
-    covs = [t2m(Lx[i],i)@t2m(X[i],i).transpose() for i in range(n)]
-    temp = [covs[i]-Sigma[i] for i in range(n)]
-    Lambda[3], temp_change = up_Lam(Lambda[3],temp)
+    cov = [t2m(Lx[i], i)@t2m(X[i], i).transpose() for i in range(n)]
+    temp = [cov[i]-Sigma[i] for i in range(n)]
+    Lambda[3], temp_change = up_Lam(Lambda[3], temp)
     val_lam_change = val_lam_change+temp_change
 
-    fval = fn_val_Lambda(Lambda, L, Lx, G, Sigma, covs)[0] if track_fval else []
+    fval = fn_val_Lambda(Lambda, L, Lx, G, Sigma, cov)[0] if track_fval else []
 
     return Lambda, fval, sum(val_lam_change)
 
+
 def up_Lam(Lambda, X):
-    
+
     n = len(Lambda)
     old = [Lambda[i].copy() for i in range(n)]
     Lambda = [Lambda[i]-X[i] for i in range(n)]
     val_change = np.array([norm(Lambda[i]-old[i]) for i in range(n)])
 
     return Lambda, val_change
+
 
 def fn_val_Lambda(Lambda, L, Lx, X, G, Sigma, covs):
     n = len(Lx)

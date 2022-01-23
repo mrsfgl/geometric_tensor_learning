@@ -1,6 +1,5 @@
 
 import numpy as np
-import networkx as nx
 
 from util.t2m import t2m
 from util.m2t import m2t
@@ -15,8 +14,8 @@ from util.fn_vals import fn_val_L
 from util.fn_vals import fn_val_G
 
 
-def geoTL(Y, Phi, gamma=[], theta=[], alpha=[], max_iter=500, err_tol=1e-5,
-          d=2, verbose=False
+def geoTL(Y, Phi, gamma=[1, 1, 1, 1], theta=[1, 1, 1, 1], alpha=[],
+          max_iter=500, err_tol=1e-5, d=2, verbose=False
           ):
     ''' Implementation of ADMM loop for GeoTL.
 
@@ -63,18 +62,11 @@ def geoTL(Y, Phi, gamma=[], theta=[], alpha=[], max_iter=500, err_tol=1e-5,
     sizes = Y.shape
     n = len(sizes)
 
-    # Initialize variables
-    if len(gamma) != 0:
-        L, G_var, Lx, X, Sigma, Lambda, _, _, _ = initialize_nograd(sizes)
-    else:
-        (L, G_var, Lx, X, Sigma, Lambda,
-         gamma, theta, alpha
-         ) = initialize_nograd(sizes)
-
+    L, G_var, Lx, X, Sigma, Lambda, _, _, alpha = initialize_nograd(sizes)
     var_y = np.var(Y.data)
     for i in range(n):
-        gamma[i] = var_y*sizes[i]**2/(25*d[i]**2)
-        theta[i] = sizes[i]**4/(d[i]**4*10**7)
+        gamma[i] = gamma[i]*var_y*sizes[i]**2/(25*d[i]**2)
+        theta[i] = theta[i]*sizes[i]**4/(d[i]**4*10**7)
 
     iter = 0
     fval_tot = []
@@ -174,4 +166,4 @@ def initialize_nograd(sizes):
               [np.zeros(sizes) for i in range(n)],
               [np.zeros([sizes[i], sizes[i]]) for i in range(n)]]
 
-    return L, G_var, Lx, X, Sigma, Lambda, alpha, theta, gamma
+    return L, G_var, Lx, X, Sigma, Lambda, gamma, theta, alpha

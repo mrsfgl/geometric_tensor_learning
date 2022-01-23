@@ -1,0 +1,16 @@
+
+name: synthetic-experiments
+
+data:
+# Data parameters
+  size_list: [[10, 10, 10, 10], [12, 12, 12, 12]]
+  d_list: [[1.5, 1.5, 1.5, 1.5], [2, 2, 2, 2], [2.5, 2.5, 2.5, 2.5]]
+
+noise:
+# Noise parameters
+  SNR: [-1, 0, 1, 5, 10]
+
+model:
+  geoTL:
+    gamma: [0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50]
+    theta: [0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50]
