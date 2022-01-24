@@ -1,5 +1,6 @@
 
 import numpy as np
+from omegaconf import OmegaConf
 from util.generate_graphs import generate_graphs
 from util.generate_data import generate_smooth_stationary_data
 from util.contaminate_data import contaminate_signal
@@ -27,6 +28,7 @@ def grid_search(noise_list, data_params, param_list):
 
     for i_sz in range(len_sizes):
         sizes = data_params.size_list[i_sz]
+        n = len(sizes)
         ranks = [np.int16(np.log(sz)) for sz in sizes]
 
         for i_d in range(len_dens):
@@ -40,10 +42,10 @@ def grid_search(noise_list, data_params, param_list):
                 Y = contaminate_signal(X_smooth, noise_level)
 
                 for i_gam in range(len_gamma):
-                    curr_gamma = param_list.geoTL.gamma[i_gam]
+                    curr_gamma = np.ones(n)*param_list.geoTL.gamma[i_gam]
 
                     for i_theta in range(len_theta):
-                        curr_theta = param_list.geoTL.theta[i_theta]
+                        curr_theta = np.ones(n)*param_list.geoTL.theta[i_theta]
 
                         L_geotl, _, _ = geoTL(Y, Phi,
                                               gamma=curr_gamma,
@@ -55,7 +57,7 @@ def grid_search(noise_list, data_params, param_list):
                         err_geoTL[i_sz, i_d, i_n, i_gam, i_theta
                                   ] = measure_error(X_smooth, L_geotl)
 
-                L_horpca, _, _ = horpca(Y)
+                L_horpca, _, _, _ = horpca(Y)
                 L_hosvd = hosvd(Y, ranks)[0]
 
                 err_orig[i_sz, i_d, i_n] = measure_error(X_smooth, Y.data)
@@ -75,3 +77,7 @@ def grid_search(noise_list, data_params, param_list):
                 #                                         theta)[1]
 
     return err_orig, err_geoTL, err_horpca, err_hosvd
+
+if __name__ == "__main__":
+    params = OmegaConf('configs/synthetic_conf.yaml')
+    e_o, e_g, e_ho, e_hs = grid_search(params.noise.SNR, params.data, params.model)
