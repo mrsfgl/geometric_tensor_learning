@@ -22,7 +22,9 @@ def hosvd(X, rank):
     U_list = []
     for i in range(n):
         U, S, V = np.linalg.svd(t2m(Y, i), full_matrices=False)
+        ind = np.argsort(S)[::-1]
         U_list.append(U)
-        Y = m2t(np.dot(U[:, :rank[i]]*S[:rank[i]], V[:rank[i], :]), sizes, i)
+        Y = m2t(np.dot(U[:, ind[:rank[i]]]*S[ind[:rank[i]]],
+                       V[ind[:rank[i]], :]), sizes, i)
 
     return Y, U_list

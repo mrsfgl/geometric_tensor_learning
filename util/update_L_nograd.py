@@ -4,7 +4,7 @@ from util.m2t import m2t
 import numpy as np
 from numpy.linalg import norm
 
-def update_L(Lx, L, X, Lambda, Sigma, alpha, track_fval = False):
+def update_L(Lx, L, X, Lambda, Sigma, alpha, track_fval=False):
     """ Update function for variable Lx. This version does not utilize a 
     gradient descent but approximates a covariance Sigma using an auxiliary variable.
     """

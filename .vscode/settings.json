@@ -1,5 +1,5 @@
 {
     "python.linting.flake8Enabled": true,
-    "python.linting.enabled": false,
+    "python.linting.enabled": true,
     "git.path": "/opt/software/git/2.27.0/bin/"
 }
