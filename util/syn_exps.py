@@ -8,6 +8,8 @@ from util.horpca import horpca
 from util.hosvd import hosvd
 from util.geoTL import geoTL
 from util.measure_error import measure_error
+from util.srpg import gmlsvd
+from util.srpg import srpg_nnfold_modified as nnfold
 
 
 def grid_search(noise_list, data_params, param_list):
@@ -25,6 +27,8 @@ def grid_search(noise_list, data_params, param_list):
     err_geoTL = np.zeros(shape_geoTL_par)
     err_horpca = np.zeros(shape_data_par)
     err_hosvd = np.zeros(shape_data_par)
+    err_gmlsvd = np.zeros(shape_data_par)
+    err_nnfold = np.zeros(shape_data_par)
 
     for i_sz in range(len_sizes):
         sizes = data_params.size_list[i_sz]
@@ -58,11 +62,15 @@ def grid_search(noise_list, data_params, param_list):
                                   ] = measure_error(X_smooth, L_geotl)
 
                 L_horpca, _, _, _ = horpca(Y)
-                L_hosvd = hosvd(Y, ranks)[0]
+                L_hosvd = hosvd(Y, ranks, max_iter=10, err_tol=1e-2)[0]
+                L_gmlsvd = gmlsvd(Y, ranks)
+                L_nnfold = nnfold(Y, ranks)
 
                 err_orig[i_sz, i_d, i_n] = measure_error(X_smooth, Y.data)
                 err_horpca[i_sz, i_d, i_n] = measure_error(X_smooth, L_horpca)
                 err_hosvd[i_sz, i_d, i_n] = measure_error(X_smooth, L_hosvd)
+                err_gmlsvd[i_sz, i_d, i_n] = measure_error(X_smooth, L_gmlsvd)
+                err_nnfold[i_sz, i_d, i_n] = measure_error(X_smooth, L_nnfold)
 
                 # Y_rep = [Y.data for i in range(n)]
                 # gamma = [gamma[i] for i in range(n)]
@@ -76,7 +84,8 @@ def grid_search(noise_list, data_params, param_list):
                 #                                         Lambda[3], alpha[3],
                 #                                         theta)[1]
 
-    return err_orig, err_geoTL, err_horpca, err_hosvd
+    return err_orig, err_geoTL, err_horpca, err_hosvd, err_gmlsvd, err_nnfold
+
 
 if __name__ == "__main__":
     params = OmegaConf('configs/synthetic_conf.yaml')

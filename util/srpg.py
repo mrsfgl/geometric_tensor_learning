@@ -6,9 +6,111 @@ Varma and Kovačević, 'SMOOTH SIGNAL RECOVERY ON PRODUCT GRAPHS', ICASSP 2019
 import numpy as np
 from numpy.linalg import norm
 from util.merge_Tucker import merge_Tucker
+from util.soft_hosvd import soft_hosvd
 from util.soft_hosvd import soft_moden
 from util.t2m import t2m
 from util.m2t import m2t
+from util.hosvd import hosvd
+
+
+def srpg_nnfold_modified(
+        Y, Phi,
+        alpha=[1, 1, 1, 1], beta=[1, 1, 1, 1],
+        mu=[np.ones(4)*0.01, np.ones(4)*0.01],
+        max_iter=300, err_tol=1e-3, verbose=False
+        ):
+    ''' Implementation of Reconstruction via the Nuclear Norm of Unfoldings.
+
+    Parameters:
+        Y: numpy.ndarray
+            Corrupted input tensor.
+
+        Phi: list of matrices
+            Graph Laplacian list for all modes.
+
+        alpha: list of doubles
+            Parameter for mode-n smoothness
+
+        beta: list of doubles
+            Parameter for nuclear norm
+
+        mu: list of list of doubles
+            Lagrange multiplier
+
+    Outputs:
+        X: numpy.ndarray
+            Output tensor.
+    '''
+    sizes = Y.shape
+    n = len(sizes)
+
+    X = np.zeros(sizes)
+    Z = [np.zeros(sizes) for _ in range(n)]
+    V = [np.zeros(sizes) for _ in range(n)]
+    W = [
+         [np.zeros(sizes) for _ in range(n)],
+         [np.zeros(sizes) for _ in range(n)]
+         ]
+
+    # ADMM loop
+    iter = 0
+    change_w = np.inf
+    obj_val = []
+    lam_val = []
+    V_inv = [np.linalg.inv(alpha[i]*Phi[i] + mu[1][i]*np.identity(sizes[i]))
+             for i in range(n)]
+    while iter < max_iter and change_w > err_tol:
+
+        # X update
+        X[~Y.mask] = Y[~Y.mask]/(1+sum(mu[0])+sum(mu[1]))
+        for i in range(n):
+            term = mu[0][i]*(W[0][i]+Z[i])
+            term = term + mu[1][i]*(W[1][i] + V[i])
+            X = X + term/(1+sum(mu[0])+sum(mu[1]))
+
+        # Z update
+        Z, _ = soft_hosvd(X, W[0], beta, 1/mu[0][0])
+
+        # V update
+        V = [m2t(mu[1][i]*V_inv[i]*t2m(X-W[1][i], i), sizes, i)
+             for i in range(n)]
+
+        # W update
+        W_old = W.copy()
+        W[0] = [W[0][i]-X+Z[i] for i in range(n)]
+        W[1] = [W[1][i]-X+V[i] for i in range(n)]
+        change_w = np.sqrt(
+            sum(
+                mu[0][i]*norm(W[0][i]-W_old[0][i])**2 +
+                mu[1][i]*norm(W[1][i]-W_old[1][i])**2
+                for i in range(n)
+                )/np.sum(mu)
+            )
+
+        lam_val.append(change_w)
+        obj_val.append(compute_obj_nnfold_modified(
+            Y, Phi, X, Z, V, W, alpha, beta, mu
+        )[0])
+        iter += 1
+
+    return X, obj_val, lam_val
+
+
+def compute_obj_nnfold_modified(Y, Phi, X, Z, V, W, alpha, beta, mu):
+    sizes = Y.shape
+    n = len(sizes)
+    val_Y = norm(Y-X)**2
+    Vmat = [t2m(V[i], i) for i in range(n)]
+    Zmat = [t2m(Z[i], i) for i in range(n)]
+    val_smooth = [alpha[i]*np.trace(Vmat[i].transpose() @ Phi[i] @ Vmat[i])
+                  for i in range(n)]
+    val_nuc = [beta[i]*norm(Zmat[i], ord='nuc') for i in range(n)]
+    val_lag = np.array([
+        [mu[0][i]*norm(X-Z[i]-W[0][i])**2 for i in range(n)],
+        [mu[1][i]*norm(X-V[i]-W[1][i])**2 for i in range(n)]
+        ])
+    fn_val = val_Y+sum(val_smooth)+sum(val_nuc)+np.sum(val_lag)
+    return fn_val, val_Y, val_smooth, val_nuc, val_lag
 
 
 def srpg_nnfold(
@@ -194,3 +296,43 @@ def compute_obj_tda(Y, Phi, F, lamda, gamma):
 
     fn_val = val_y+sum(val_h)+sum(val_g)
     return fn_val, val_y, val_g, val_h
+
+
+def gmlsvd(Y, Phi, ranks, ranks_core=[]):
+    ''' Implementation of Tucker Decomposition via Synthesis or
+    Graph Multilinear SVD from:
+    Shahid, Nauman, Francesco Grassi, and Pierre Vandergheynst,
+    "Multilinear low-rank tensors on graphs & applications.", arXiv:1611.04835
+
+    Parameters:
+        Y: numpy.ndarray
+            Corrupted input tensor.
+
+        Phi: list of matrices
+            Graph Laplacian list for all modes.
+
+        ranks: list of integers
+            Target ranks.
+
+    Outputs:
+        X: numpy.ndarray
+            Output tensor.
+    '''
+
+    no_hosvd = not ranks_core
+    sizes = np.array(Y.shape)
+    n = len(sizes)
+
+    P = []
+    for i in range(n):
+        U, S, _ = np.linalg.svd(Phi[i], hermitian=True)
+        ind = np.argsort(S)[::-1]
+        P.append(U[:, ind[:ranks[i]]])
+
+    dims = np.arange(n)
+    X = merge_Tucker(Y.data, P, dims, transpose=True)
+    if no_hosvd:
+        return merge_Tucker(X, P, dims)
+
+    R, A, _, _ = hosvd(X, ranks_core, max_iter=50, err_tol=1e-2)
+    return merge_Tucker(R, P, dims)
