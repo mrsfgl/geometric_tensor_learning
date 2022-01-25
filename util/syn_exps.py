@@ -1,5 +1,6 @@
 
 import numpy as np
+from scipy.io import savemat
 from omegaconf import OmegaConf
 from util.generate_graphs import generate_graphs
 from util.generate_data import generate_smooth_stationary_data
@@ -71,7 +72,11 @@ def grid_search(noise_list, data_params, param_list):
                 L_gmlsvd = gmlsvd(Y, Phi, ranks)
                 err_gmlsvd[i_sz, i_d, i_n] = measure_error(X_smooth, L_gmlsvd)
 
-                L_nnfold, obj_val, lam_val = nnfold(Y, Phi, max_iter=500)
+                L_nnfold, obj_val, lam_val = nnfold(
+                    Y, Phi,
+                    alpha=np.tile(1/np.sqrt(np.max(sizes)), n),
+                    beta=np.tile(0.5/np.sqrt(np.max(sizes)), n),
+                    max_iter=500)
                 err_nnfold[i_sz, i_d, i_n] = measure_error(X_smooth, L_nnfold)
 
                 # Y_rep = [Y.data for i in range(n)]
@@ -99,4 +104,6 @@ def grid_search(noise_list, data_params, param_list):
 
 if __name__ == "__main__":
     params = OmegaConf('configs/synthetic_conf.yaml')
-    e_o, e_g, e_ho, e_hs = grid_search(params.noise.SNR, params.data, params.model)
+    d = grid_search(params.noise.SNR, params.data, params.model)
+    d['params'] = params
+    savemat('out.mat', d)

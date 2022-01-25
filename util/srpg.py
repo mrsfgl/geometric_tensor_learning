@@ -15,8 +15,8 @@ from util.hosvd import hosvd
 
 def srpg_nnfold_modified(
         Y, Phi,
-        alpha=[1, 1, 1, 1], beta=[1, 1, 1, 1],
-        mu=[np.ones(4)*0.01, np.ones(4)*0.01],
+        alpha=np.ones(4), beta=np.ones(4),
+        mu=np.tile(0.01, (2, 4)),
         max_iter=300, err_tol=1e-3, verbose=False
         ):
     ''' Implementation of Reconstruction via the Nuclear Norm of Unfoldings.
