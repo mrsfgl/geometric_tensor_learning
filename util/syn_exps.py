@@ -1,7 +1,12 @@
 
+import sys
+import os
+import argparse
+
 import numpy as np
 from scipy.io import savemat
 from omegaconf import OmegaConf
+import project_path
 from util.generate_graphs import generate_graphs
 from util.generate_data import generate_smooth_stationary_data
 from util.contaminate_data import contaminate_signal
@@ -11,11 +16,20 @@ from util.geoTL import geoTL
 from util.measure_error import measure_error
 from util.srpg import gmlsvd
 from util.srpg import srpg_nnfold_modified as nnfold
+from util.srpg import srpg_td_a as tda
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--exp_config", dest="config_file", default='configs/synthetic_conf.yaml',
+                    help="Graph model to use to generate the data.")
+
+args = parser.parse_args()
 
 
-def grid_search(noise_list, data_params, param_list):
+def grid_search(params_noise, data_params, param_list):
     '''Pipeline for experiments on synthetic data.'''
 
+    noise_type = params_noise.noise_type
+    noise_list = params_noise.SNR
     len_sizes = len(data_params.size_list)
     len_dens = len(data_params.d_list)
     len_noise = len(noise_list)
@@ -30,11 +44,12 @@ def grid_search(noise_list, data_params, param_list):
     err_hosvd = np.zeros(shape_data_par)
     err_gmlsvd = np.zeros(shape_data_par)
     err_nnfold = np.zeros(shape_data_par)
+    err_tda = np.zeros(shape_data_par)
 
     for i_sz in range(len_sizes):
         sizes = data_params.size_list[i_sz]
         n = len(sizes)
-        ranks = [2*np.int16(np.log(sz)) for sz in sizes]
+        ranks = [3*np.int16(np.log(sz)) for sz in sizes]
 
         for i_d in range(len_dens):
             d = data_params.d_list[i_d]
@@ -44,7 +59,8 @@ def grid_search(noise_list, data_params, param_list):
 
             for i_n in range(len_noise):
                 noise_level = noise_list[i_n]
-                Y = contaminate_signal(X_smooth, noise_level)
+                Y = contaminate_signal(X_smooth, noise_level,
+                                       noise_type=noise_type)
                 err_orig[i_sz, i_d, i_n] = measure_error(X_smooth, Y.data)
 
                 for i_gam in range(len_gamma):
@@ -72,11 +88,15 @@ def grid_search(noise_list, data_params, param_list):
                 L_gmlsvd = gmlsvd(Y, Phi, ranks)
                 err_gmlsvd[i_sz, i_d, i_n] = measure_error(X_smooth, L_gmlsvd)
 
-                L_nnfold, obj_val, lam_val = nnfold(
+                L_tda, _ = tda(Y, Phi, ranks)
+                err_tda[i_sz, i_d, i_n] = measure_error(X_smooth, L_tda)
+
+                L_nnfold, _, _ = nnfold(
                     Y, Phi,
-                    alpha=np.tile(1/np.sqrt(np.max(sizes)), n),
+                    alpha=np.tile(0.01/np.sqrt(np.max(sizes)), n),
                     beta=np.tile(0.5/np.sqrt(np.max(sizes)), n),
-                    max_iter=500)
+                    max_iter=500,
+                    err_tol=1e-2)
                 err_nnfold[i_sz, i_d, i_n] = measure_error(X_smooth, L_nnfold)
 
                 # Y_rep = [Y.data for i in range(n)]
@@ -97,13 +117,18 @@ def grid_search(noise_list, data_params, param_list):
         'HoRPCA': err_horpca,
         'HoSVD': err_hosvd,
         'GMLSVD': err_gmlsvd,
-        'NNFOLD': err_nnfold
+        'NNFOLD': err_nnfold,
+        'TDA': err_tda
         }
     return d
 
 
+confs = args.config_file
 if __name__ == "__main__":
-    params = OmegaConf('configs/synthetic_conf.yaml')
-    d = grid_search(params.noise.SNR, params.data, params.model)
+    params = OmegaConf.load(confs)
+    sys.stdout.write('Hit 1!\n')
+    d = grid_search(params.noise, params.data, params.model)
+    sys.stdout.write('Hit 2!\n')
     d['params'] = params
-    savemat('out.mat', d)
+    sys.stdout.write('Hit 3!\n')
+    savemat('experiments/{}.mat'.format(np.random.randint(1, 3000)) , d)
