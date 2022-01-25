@@ -11,6 +11,7 @@ def hosvd(X, rank, max_iter=1, err_tol=1, track_fval=False):
     Takes the HOSVD of tensor input.
 
     Parameters:
+    ---
         X: Data tensor
 
         rank: Aimed ranks for the resulting tensor.
@@ -20,7 +21,8 @@ def hosvd(X, rank, max_iter=1, err_tol=1, track_fval=False):
 
         err_tol: Error tolerance. Not relevant for HOSVD.
 
-    Outputs:
+    Returns:
+    ---
         Y: Tensor with ranks `rank`at each mode unfolding.
         U_list: List of factor matrices of HOSVD.
     '''
@@ -29,7 +31,7 @@ def hosvd(X, rank, max_iter=1, err_tol=1, track_fval=False):
     n = len(sizes)
     U_list = [np.eye(sizes[i]) for i in range(n)]
     Y = X.copy()
-    
+
     iter = 0
     change = np.inf
     err_tot = []

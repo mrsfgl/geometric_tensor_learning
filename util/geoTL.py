@@ -14,8 +14,15 @@ from util.fn_vals import fn_val_L
 from util.fn_vals import fn_val_G
 
 
-def geoTL(Y, Phi, gamma=[1, 1, 1, 1], theta=[1, 1, 1, 1], alpha=[],
-          max_iter=500, err_tol=1e-5, d=2, verbose=False
+def geoTL(Y,
+          Phi,
+          gamma=[1, 1, 1, 1],
+          theta=[1, 1, 1, 1],
+          alpha=[],
+          max_iter=500,
+          err_tol=1e-5,
+          d=2,
+          verbose=False
           ):
     ''' Implementation of ADMM loop for GeoTL.
 
@@ -65,8 +72,8 @@ def geoTL(Y, Phi, gamma=[1, 1, 1, 1], theta=[1, 1, 1, 1], alpha=[],
     L, G_var, Lx, X, Sigma, Lambda, _, _, alpha = initialize_nograd(sizes)
     var_y = np.var(Y.data)
     for i in range(n):
-        gamma[i] = np.float(gamma[i])*var_y*sizes[i]**2/(25*d[i]**2)
-        theta[i] = np.float(theta[i])*sizes[i]**4/(d[i]**4*10**7)
+        gamma[i] = gamma[i]*var_y*(sizes[i]**2)/(25*d[i]**2)
+        theta[i] = theta[i]*(sizes[i]**4)/((d[i]**4)*(10**7))
 
     iter = 0
     fval_tot = []
@@ -76,7 +83,8 @@ def geoTL(Y, Phi, gamma=[1, 1, 1, 1], theta=[1, 1, 1, 1], alpha=[],
     # ADMM Loop
     while True:
         # L Update
-        prev_val = fn_val_L(L, Y, Lx, G_var, Lambda[:2], alpha[:2])[0]
+        if verbose:
+            prev_val = fn_val_L(L, Y, Lx, G_var, Lambda[:2], alpha[:2])[0]
         temp = np.zeros(sizes)
         for i in range(n):
             temp += alpha[0][i]*(G_var[i] + Lambda[0][i])
@@ -84,33 +92,43 @@ def geoTL(Y, Phi, gamma=[1, 1, 1, 1], theta=[1, 1, 1, 1], alpha=[],
         L = temp/(1+sum(alpha[0]) + sum(alpha[1]))
         L[~Y.mask] = L[~Y.mask] + Y[~Y.mask]/(sum(alpha[0])+sum(alpha[1])+1)
         fval_data = fn_val_L(L, Y, Lx, G_var, Lambda[:2], alpha[:2])
-        fval_data_change = fval_data[0]-prev_val
+        if verbose:
+            fval_data_change = fval_data[0]-prev_val
 
         # G Update
-        prev_val = fn_val_G(G_var, L, Phi, Lambda[0], alpha[0], gamma)[0]
+        if verbose:
+            prev_val = fn_val_G(G_var, L, Phi, Lambda[0], alpha[0], gamma)[0]
         G_var = [m2t(alpha[0][i]*G_inv[i]*t2m(L-Lambda[0][i], i), sizes, i)
                  for i in range(n)]
         fval_G = fn_val_G(G_var, L, Phi, Lambda[0], alpha[0], gamma)
-        fval_G_change = fval_G[0] - prev_val
+        if verbose:
+            fval_G_change = fval_G[0] - prev_val
 
         # Lx Update
-        prev_val = fnval_L(Lx, L, X, Lambda[1:], Sigma, alpha[1:])[0]
+        if verbose:
+            prev_val = fnval_L(Lx, L, X, Lambda[1:], Sigma, alpha[1:])[0]
         Lx, fval_L, fval_low, _, _ = update_L(Lx, L, X, Lambda[1:], Sigma,
                                               alpha[1:], track_fval=True)
-        fval_L_change = fval_L - prev_val
+        if verbose:
+            fval_L_change = fval_L - prev_val
 
         # X Update
-        prev_val = sum(fnval_X(X, Lx, Lambda[2:], Sigma, alpha[2:])[1])
+        if verbose:
+            prev_val = sum(fnval_X(X, Lx, Lambda[2:], Sigma, alpha[2:])[1])
         X, _, fval_X, _ = update_X(X, Lx, Lambda[2:], Sigma, alpha[2:],
                                    track_fval=True)
-        fval_X_change = sum(fval_X) - prev_val
+        if verbose:
+            fval_X_change = sum(fval_X) - prev_val
 
         # Sigma Update
-        prev_val = fnval_Sigma(Sigma, Lx, X, Phi, Lambda[3], alpha[3], theta)
+        if verbose:
+            prev_val = fnval_Sigma(Sigma, Lx, X, Phi, Lambda[3], alpha[3], 
+                                   theta)
         Sigma, fval_Sigma, _, _ = update_Sigma(Sigma, Lx, X, Phi, Lambda[3],
                                                alpha[3], theta, track_fval=True
                                                )
-        fval_Sigma_change = fval_Sigma - prev_val[0]
+        if verbose:
+            fval_Sigma_change = fval_Sigma - prev_val[0]
 
         fval_tot.append(fval_data[1] + fval_G[0] + sum(fval_low) + sum(fval_X)
                         + fval_Sigma

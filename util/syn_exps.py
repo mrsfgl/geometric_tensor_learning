@@ -33,17 +33,18 @@ def grid_search(noise_list, data_params, param_list):
     for i_sz in range(len_sizes):
         sizes = data_params.size_list[i_sz]
         n = len(sizes)
-        ranks = [np.int16(np.log(sz)) for sz in sizes]
+        ranks = [2*np.int16(np.log(sz)) for sz in sizes]
 
         for i_d in range(len_dens):
             d = data_params.d_list[i_d]
             Phi = generate_graphs(sizes, d)
 
-            X_smooth, V = generate_smooth_stationary_data(Phi)
+            X_smooth, _ = generate_smooth_stationary_data(Phi)
 
             for i_n in range(len_noise):
                 noise_level = noise_list[i_n]
                 Y = contaminate_signal(X_smooth, noise_level)
+                err_orig[i_sz, i_d, i_n] = measure_error(X_smooth, Y.data)
 
                 for i_gam in range(len_gamma):
                     curr_gamma = np.ones(n)*param_list.geoTL.gamma[i_gam]
@@ -52,8 +53,8 @@ def grid_search(noise_list, data_params, param_list):
                         curr_theta = np.ones(n)*param_list.geoTL.theta[i_theta]
 
                         L_geotl, _, _ = geoTL(Y, Phi,
-                                              gamma=curr_gamma,
-                                              theta=curr_theta,
+                                              gamma=curr_gamma.copy(),
+                                              theta=curr_theta.copy(),
                                               max_iter=400,
                                               err_tol=1e-2,
                                               d=d)
@@ -62,14 +63,15 @@ def grid_search(noise_list, data_params, param_list):
                                   ] = measure_error(X_smooth, L_geotl)
 
                 L_horpca, _, _, _ = horpca(Y)
-                L_hosvd = hosvd(Y, ranks, max_iter=10, err_tol=1e-2)[0]
-                L_gmlsvd = gmlsvd(Y, ranks)
-                L_nnfold = nnfold(Y, ranks)
-
-                err_orig[i_sz, i_d, i_n] = measure_error(X_smooth, Y.data)
                 err_horpca[i_sz, i_d, i_n] = measure_error(X_smooth, L_horpca)
+
+                L_hosvd = hosvd(Y.data, ranks, max_iter=10, err_tol=1e-2)[0]
                 err_hosvd[i_sz, i_d, i_n] = measure_error(X_smooth, L_hosvd)
+
+                L_gmlsvd = gmlsvd(Y, Phi, ranks)
                 err_gmlsvd[i_sz, i_d, i_n] = measure_error(X_smooth, L_gmlsvd)
+
+                L_nnfold, obj_val, lam_val = nnfold(Y, Phi, max_iter=500)
                 err_nnfold[i_sz, i_d, i_n] = measure_error(X_smooth, L_nnfold)
 
                 # Y_rep = [Y.data for i in range(n)]
@@ -84,7 +86,15 @@ def grid_search(noise_list, data_params, param_list):
                 #                                         Lambda[3], alpha[3],
                 #                                         theta)[1]
 
-    return err_orig, err_geoTL, err_horpca, err_hosvd, err_gmlsvd, err_nnfold
+    d = {
+        'Original': err_orig,
+        'geoTL': err_geoTL,
+        'HoRPCA': err_horpca,
+        'HoSVD': err_hosvd,
+        'GMLSVD': err_gmlsvd,
+        'NNFOLD': err_nnfold
+        }
+    return d
 
 
 if __name__ == "__main__":
