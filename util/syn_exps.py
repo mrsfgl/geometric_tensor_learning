@@ -19,8 +19,9 @@ from util.srpg import srpg_nnfold_modified as nnfold
 from util.srpg import srpg_td_a as tda
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--exp_config", dest="config_file", default='configs/synthetic_conf.yaml',
-                    help="Graph model to use to generate the data.")
+parser.add_argument("--exp_config", dest="config_file",
+                    default='configs/synthetic_conf.yaml',
+                    help="Configuration file for the experiments.")
 
 args = parser.parse_args()
 
@@ -132,4 +133,6 @@ if __name__ == "__main__":
     sys.stdout.write('Hit 1!\n')
     d = grid_search(params.noise, params.data, params.model)
     sys.stdout.write('Hit 2!\n')
-    savemat('experiments/awgn{}.mat'.format(np.random.randint(1, 3000)) , d)
+    d['params'] = params
+    sys.stdout.write('Hit 3!\n')
+    savemat('experiments/{}.mat'.format(np.random.randint(1, 3000)), d)
