@@ -8,10 +8,10 @@ data:
 
 noise:
 # Noise parameters
-  SNR: [-1, 5, 10]
+  SNR: [-1, 0, 1, 3, 5, 7, 9, 10]
   noise_type: 'AWGN'
 
 model:
   geoTL:
-    gamma: [0.01,0.1,1,10]
-    theta: [0.01,0.1,1,10]
+    gamma: [0.9,1,3,5]
+    theta: [0.9,1,3,5]

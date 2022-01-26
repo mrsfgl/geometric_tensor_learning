@@ -4,12 +4,13 @@ import os
 import argparse
 
 import numpy as np
-from scipy.io import savemat
+from scipy.io import savemat, loadmat
 from omegaconf import OmegaConf
 import project_path
-from util.generate_graphs import generate_graphs
-from util.generate_data import generate_smooth_stationary_data
+from sklearn.neighbors import kneighbors_graph
+
 from util.contaminate_data import contaminate_signal
+from util.t2m import t2m
 from util.horpca import horpca
 from util.hosvd import hosvd
 from util.geoTL import geoTL
@@ -19,25 +20,33 @@ from util.srpg import srpg_nnfold_modified as nnfold
 from util.srpg import srpg_td_a as tda
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--exp_config", dest="config_file", default='configs/synthetic_conf.yaml',
+parser.add_argument("--exp_config", dest="config_file", default='configs/real_conf.yaml',
                     help="Graph model to use to generate the data.")
 
 args = parser.parse_args()
 
 
-def grid_search(params_noise, data_params, param_list):
+def grid_search(params_noise, param_list):
     '''Pipeline for experiments on synthetic data.'''
 
     noise_type = params_noise.noise_type
     noise_list = params_noise.SNR
-    len_sizes = len(data_params.size_list)
-    len_dens = len(data_params.d_list)
     len_noise = len(noise_list)
     len_gamma = len(param_list.geoTL.gamma)
     len_theta = len(param_list.geoTL.theta)
 
-    shape_data_par = (len_sizes, len_dens, len_noise)
-    shape_geoTL_par = (len_sizes, len_dens, len_noise, len_gamma, len_theta)
+    md = loadmat('data/coil_small.mat')
+    X = md['Data']
+    sizes = X.shape
+    n = len(sizes)
+    Phi = []
+    for i in range(n):
+        A = kneighbors_graph(t2m(X,i), n_neighbors=int(np.log(sizes[i]),)).todense()
+        A = (A+A.T)/2
+        Phi.append(np.diag(np.array(np.sum(A,1)).squeeze())-A)
+
+    shape_data_par = (len_noise)
+    shape_geoTL_par = (len_noise, len_gamma, len_theta)
     err_orig = np.zeros(shape_data_par)
     err_geoTL = np.zeros(shape_geoTL_par)
     err_horpca = np.zeros(shape_data_par)
@@ -46,13 +55,14 @@ def grid_search(params_noise, data_params, param_list):
     err_nnfold = np.zeros(shape_data_par)
     err_tda = np.zeros(shape_data_par)
 
-    X_smooth, Phi = load_data('COIL')
-
+    sizes = X.shape
+    ranks = [3*np.int16(np.log(sz)) for sz in sizes]
+    n = len(sizes)
     for i_n in range(len_noise):
         noise_level = noise_list[i_n]
-        Y = contaminate_signal(X_smooth, noise_level,
+        Y = contaminate_signal(X, noise_level,
                                 noise_type=noise_type)
-        err_orig[i_sz, i_d, i_n] = measure_error(X_smooth, Y.data)
+        err_orig[i_n] = measure_error(X, Y.data)
 
         for i_gam in range(len_gamma):
             curr_gamma = np.ones(n)*param_list.geoTL.gamma[i_gam]
@@ -64,23 +74,23 @@ def grid_search(params_noise, data_params, param_list):
                                         gamma=curr_gamma.copy(),
                                         theta=curr_theta.copy(),
                                         max_iter=400,
-                                        err_tol=1e-2,
-                                        d=d)
+                                        err_tol=1e-2)
 
-                err_geoTL[i_sz, i_d, i_n, i_gam, i_theta
-                            ] = measure_error(X_smooth, L_geotl)
+                err_geoTL[i_n, i_gam, i_theta
+                            ] = measure_error(X, L_geotl)
 
-        L_horpca, _, _, _ = horpca(Y)
-        err_horpca[i_sz, i_d, i_n] = measure_error(X_smooth, L_horpca)
+        alpha = [10**-3 for i in range(n)]
+        L_horpca, _, _, _ = horpca(Y, alpha=alpha, max_iter=400)
+        err_horpca[i_n] = measure_error(X, L_horpca)
 
         L_hosvd = hosvd(Y.data, ranks, max_iter=10, err_tol=1e-2)[0]
-        err_hosvd[i_sz, i_d, i_n] = measure_error(X_smooth, L_hosvd)
+        err_hosvd[i_n] = measure_error(X, L_hosvd)
 
         L_gmlsvd = gmlsvd(Y, Phi, ranks)
-        err_gmlsvd[i_sz, i_d, i_n] = measure_error(X_smooth, L_gmlsvd)
+        err_gmlsvd[i_n] = measure_error(X, L_gmlsvd)
 
         L_tda, _ = tda(Y, Phi, ranks)
-        err_tda[i_sz, i_d, i_n] = measure_error(X_smooth, L_tda)
+        err_tda[i_n] = measure_error(X, L_tda)
 
         L_nnfold, _, _ = nnfold(
             Y, Phi,
@@ -88,19 +98,8 @@ def grid_search(params_noise, data_params, param_list):
             beta=np.tile(0.5/np.sqrt(np.max(sizes)), n),
             max_iter=500,
             err_tol=1e-2)
-        err_nnfold[i_sz, i_d, i_n] = measure_error(X_smooth, L_nnfold)
+        err_nnfold[i_n] = measure_error(X, L_nnfold)
 
-        # Y_rep = [Y.data for i in range(n)]
-        # gamma = [gamma[i] for i in range(n)]
-        # theta = [theta[i] for i in range(n)]
-        # y_sigma = [t2m(Y.data, i)@t2m(Y.data, i).transpose()
-        #            for i in range(n)]
-        # y_smooth_val[i_sz, i_d, i_n, :] =fn_val_G(Y_rep,Y.data,Phi,
-        #                                           Lambda[0],alpha[0],
-        #                                           gamma)[1]
-        # comm_y[i_sz, i_d, i_n, :] = fnval_Sigma(y_sigma, Lx, X, Phi,
-        #                                         Lambda[3], alpha[3],
-        #                                         theta)[1]
 
     d = {
         'Original': err_orig,
@@ -118,8 +117,6 @@ confs = args.config_file
 if __name__ == "__main__":
     params = OmegaConf.load(confs)
     sys.stdout.write('Hit 1!\n')
-    d = grid_search(params.noise, params.data, params.model)
+    d = grid_search(params.noise, params.model)
     sys.stdout.write('Hit 2!\n')
-    d['params'] = params
-    sys.stdout.write('Hit 3!\n')
-    savemat('experiments/{}.mat'.format(np.random.randint(1, 3000)) , d)
+    savemat('experiments/real_experiments/{}.mat'.format(np.random.randint(1, 3000)) , d)

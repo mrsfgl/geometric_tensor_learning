@@ -31,7 +31,7 @@ def update_X(X, Lx, Lambda, Sigma, alpha, track_fval=False):
     (fval,
      fval_X,
      fval_sig
-     ) = fn_val(X, Lx, Lambda, Sigma, alpha) if track_fval else []
+     ) = fn_val(X, Lx, Lambda, Sigma, alpha) if track_fval else [[],[],[]]
 
     return X, fval, fval_X, fval_sig
 

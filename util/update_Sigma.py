@@ -29,7 +29,7 @@ def update_Sigma(Sigma, Lx, X, Phi, Lambda, alpha, theta, track_fval=False):
         Sigma[i] = vecSig.reshape(Phi[i].shape).transpose()
 
     (fval, fval_sig, fval_comm
-     ) = fn_val(Sigma, Lx, X, Phi, Lambda, alpha, theta) if track_fval else []
+     ) = fn_val(Sigma, Lx, X, Phi, Lambda, alpha, theta) if track_fval else [[],[],[]]
 
     return Sigma, fval, fval_sig, fval_comm
 

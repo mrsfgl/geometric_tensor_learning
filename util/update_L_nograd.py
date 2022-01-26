@@ -35,7 +35,7 @@ def update_L(Lx, L, X, Lambda, Sigma, alpha, track_fval=False):
      fval_L,
      fval_X,
      fval_sig
-     ) = fn_val(Lx, L, X, Lambda, Sigma, alpha) if track_fval else []
+     ) = fn_val(Lx, L, X, Lambda, Sigma, alpha) if track_fval else [[],[],[],[]]
 
     return Lx, fval, fval_L, fval_X, fval_sig
 

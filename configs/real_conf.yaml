@@ -1,0 +1,12 @@
+
+name: real-experiments
+
+noise:
+# Noise parameters
+  SNR: [-1, 1, 5, 10]
+  noise_type: 'AWGN'
+
+model:
+  geoTL:
+    gamma: [0.0000001,0.00001,0.001,0.1,1,10,100]
+    theta: [0.0000001,0.00001,0.001,0.1,1,10,100]

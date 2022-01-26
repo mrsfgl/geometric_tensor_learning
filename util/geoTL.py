@@ -71,9 +71,12 @@ def geoTL(Y,
 
     L, G_var, Lx, X, Sigma, Lambda, _, _, alpha = initialize_nograd(sizes)
     var_y = np.var(Y.data)
+    gamma = np.array(gamma, dtype=np.double)
+    theta = np.array(theta, dtype=np.double)
+    
     for i in range(n):
-        gamma[i] = gamma[i]*var_y*(sizes[i]**2)/(25*d[i]**2)
-        theta[i] = theta[i]*(sizes[i]**4)/((d[i]**4)*(10**7))
+        gamma[i] *= var_y*(sizes[i]**2)/(25*d[i]**2)
+        theta[i] *= (sizes[i]**4)/((d[i]**4)*(10**7))
 
     iter = 0
     fval_tot = []

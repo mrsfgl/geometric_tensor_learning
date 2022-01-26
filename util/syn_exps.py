@@ -61,6 +61,7 @@ def grid_search(params_noise, data_params, param_list):
                 noise_level = noise_list[i_n]
                 Y = contaminate_signal(X_smooth, noise_level,
                                        noise_type=noise_type)
+                std_Y = np.std(Y)
                 err_orig[i_sz, i_d, i_n] = measure_error(X_smooth, Y.data)
 
                 for i_gam in range(len_gamma):
@@ -79,7 +80,9 @@ def grid_search(params_noise, data_params, param_list):
                         err_geoTL[i_sz, i_d, i_n, i_gam, i_theta
                                   ] = measure_error(X_smooth, L_geotl)
 
-                L_horpca, _, _, _ = horpca(Y)
+                alpha = [10**-2 for i in range(n)]
+                L_horpca, _, _, _ = horpca(Y, alpha=alpha, max_iter=500,
+                                           err_tol=1e-3)
                 err_horpca[i_sz, i_d, i_n] = measure_error(X_smooth, L_horpca)
 
                 L_hosvd = hosvd(Y.data, ranks, max_iter=10, err_tol=1e-2)[0]
@@ -129,6 +132,4 @@ if __name__ == "__main__":
     sys.stdout.write('Hit 1!\n')
     d = grid_search(params.noise, params.data, params.model)
     sys.stdout.write('Hit 2!\n')
-    d['params'] = params
-    sys.stdout.write('Hit 3!\n')
-    savemat('experiments/{}.mat'.format(np.random.randint(1, 3000)) , d)
+    savemat('experiments/awgn{}.mat'.format(np.random.randint(1, 3000)) , d)
