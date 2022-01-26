@@ -36,7 +36,7 @@ def merge_Tucker(C, U, dims, transpose=False):
     X = C.copy()
     sizes = list(X.shape)
     for i in range(n):
-        V = U[i].transpose() if transpose else U[i]
+        V = U[i].copy().T if transpose else U[i].copy()
         sizes[dims[i]] = V.shape[0]
         X = m2t(V @ t2m(X, dims[i]), sizes, dims[i])
 

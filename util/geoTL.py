@@ -20,8 +20,8 @@ def geoTL(Y,
           theta=[1, 1, 1, 1],
           alpha=[],
           max_iter=500,
-          err_tol=1e-5,
-          d=2,
+          err_tol=1e-3,
+          d=np.tile(2, 4),
           verbose=False
           ):
     ''' Implementation of ADMM loop for GeoTL.
@@ -91,49 +91,46 @@ def geoTL(Y,
             temp += alpha[1][i]*(Lx[i] + Lambda[1][i])
         L = temp/(1+sum(alpha[0]) + sum(alpha[1]))
         L[~Y.mask] = L[~Y.mask] + Y[~Y.mask]/(sum(alpha[0])+sum(alpha[1])+1)
-        fval_data = fn_val_L(L, Y, Lx, G_var, Lambda[:2], alpha[:2])
         if verbose:
+            fval_data = fn_val_L(L, Y, Lx, G_var, Lambda[:2], alpha[:2])
             fval_data_change = fval_data[0]-prev_val
+            prev_val = fn_val_G(G_var, L, Phi, Lambda[0], alpha[0], gamma)[0]
 
         # G Update
-        if verbose:
-            prev_val = fn_val_G(G_var, L, Phi, Lambda[0], alpha[0], gamma)[0]
         G_var = [m2t(alpha[0][i]*G_inv[i]*t2m(L-Lambda[0][i], i), sizes, i)
                  for i in range(n)]
-        fval_G = fn_val_G(G_var, L, Phi, Lambda[0], alpha[0], gamma)
         if verbose:
+            fval_G = fn_val_G(G_var, L, Phi, Lambda[0], alpha[0], gamma)
             fval_G_change = fval_G[0] - prev_val
+            prev_val = fnval_L(Lx, L, X, Lambda[1:], Sigma, alpha[1:])[0]
 
         # Lx Update
-        if verbose:
-            prev_val = fnval_L(Lx, L, X, Lambda[1:], Sigma, alpha[1:])[0]
         Lx, fval_L, fval_low, _, _ = update_L(Lx, L, X, Lambda[1:], Sigma,
-                                              alpha[1:], track_fval=True)
+                                              alpha[1:], track_fval=verbose)
         if verbose:
             fval_L_change = fval_L - prev_val
+            prev_val = sum(fnval_X(X, Lx, Lambda[2:], Sigma, alpha[2:])[1])
 
         # X Update
-        if verbose:
-            prev_val = sum(fnval_X(X, Lx, Lambda[2:], Sigma, alpha[2:])[1])
         X, _, fval_X, _ = update_X(X, Lx, Lambda[2:], Sigma, alpha[2:],
-                                   track_fval=True)
+                                   track_fval=verbose)
         if verbose:
             fval_X_change = sum(fval_X) - prev_val
+            prev_val = fnval_Sigma(Sigma, Lx, X, Phi, Lambda[3], alpha[3],
+                                   theta)
 
         # Sigma Update
-        if verbose:
-            prev_val = fnval_Sigma(Sigma, Lx, X, Phi, Lambda[3], alpha[3], 
-                                   theta)
         Sigma, fval_Sigma, _, _ = update_Sigma(Sigma, Lx, X, Phi, Lambda[3],
-                                               alpha[3], theta, track_fval=True
+                                               alpha[3], theta,
+                                               track_fval=verbose
                                                )
         if verbose:
             fval_Sigma_change = fval_Sigma - prev_val[0]
 
-        fval_tot.append(fval_data[1] + fval_G[0] + sum(fval_low) + sum(fval_X)
-                        + fval_Sigma
-                        )
-        if verbose:
+            fval_tot.append(fval_data[1] + fval_G[0] + sum(fval_low) +
+                            sum(fval_X) + fval_Sigma
+                            )
+
             print(('Objective function changes for L: {:.2e}, G: {:.2e},' +
                    ' Lx: {:.2e}, X: {:.2e}, Sigma: {:.2e}').format(
                 fval_data_change,
