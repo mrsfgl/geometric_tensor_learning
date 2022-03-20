@@ -81,7 +81,7 @@ def grid_search(params_noise, data_params, param_list):
                         err_geoTL[i_sz, i_d, i_n, i_gam, i_theta
                                   ] = measure_error(X_smooth, L_geotl)
 
-                alpha = [10**-2 for i in range(n)]
+                alpha = [10**-2 for _ in range(n)]
                 L_horpca, _, _, _ = horpca(Y, alpha=alpha, max_iter=500,
                                            err_tol=1e-3)
                 err_horpca[i_sz, i_d, i_n] = measure_error(X_smooth, L_horpca)

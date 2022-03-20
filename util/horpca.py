@@ -3,10 +3,36 @@ from numpy.linalg import norm
 from util.soft_hosvd import soft_hosvd
 
 
-def horpca(Y, psi=1, beta=[], alpha=[], max_iter=100, err_tol=10**-5,
+def horpca(Y, psi=1, beta=None, alpha=None, max_iter=100, err_tol=10**-5,
            verbose=False):
     ''' Higher Order Robust PCA
     Runs the ADMM algorithm for HoRPCA
+
+    Parameters:
+        Y: numpy.ndarray
+            Corrupted input tensor.
+
+        psi: list of doubles
+            Weight parameter for mode-n nuclear norm
+
+        beta: list of doubles
+            Weight parameter for sparsity
+
+        alpha: list of doubles
+            Lagrange multipliers
+
+    Outputs:
+        L: numpy.ndarray
+            Output tensor.
+
+        obj_val: list of doubles
+            Objective values at each iteration.
+
+        terms: list of list of doubles
+            Objective values for each term at each iteration
+
+        lam_val: list of doubles
+            Total magnitude of dual variables at each iteration
 
     The original paper for this algorithm is by:
     Goldfarb, Donald, and Zhiwei Qin. "Robust low-rank tensor recovery: Models
@@ -89,19 +115,16 @@ def init(Y, psi, beta, alpha):
     n = len(sizes)
 
     # Initialize parameters using recommended choices in the paper.
-    psi = [psi for i in range(n)] if not hasattr(psi, '__len__') else psi
-    beta = np.sqrt(max(sizes)) if not beta else beta
+    psi = psi if hasattr(psi, '__len__') else [psi for _ in range(n)]
+    beta = beta or 1/np.sqrt(max(sizes))
     std_Y = np.std(Y.ravel())
-    alpha = [1/(5*std_Y) for i in range(n)] if len(alpha) == 0 else alpha
+    alpha = alpha or [1/(10*std_Y) for _ in range(n)]
 
     # Initialize tensor variables.
-    Lx = [np.zeros(sizes) for i in range(n)]
+    Lx = [np.zeros(sizes) for _ in range(n)]
     L = np.zeros(sizes)
     S = np.zeros(sizes)
-    Lambda = [
-        np.zeros(sizes),
-        [np.zeros(sizes) for i in range(n)]
-    ]
+    Lambda = [np.zeros(sizes), [np.zeros(sizes) for _ in range(n)]]
     return L, S, Lx, Lambda, psi, beta, alpha
 
 

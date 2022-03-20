@@ -340,3 +340,9 @@ util/__pycache__/update_L_nograd.cpython-39.pyc
 util/__pycache__/merge_Tucker.cpython-39.pyc
 util/__pycache__/horpca.cpython-39.pyc
 util/__pycache__/geoTL.cpython-39.pyc
+util/__pycache__/geoTL.cpython-39.pyc
+util/__pycache__/horpca.cpython-39.pyc
+util/__pycache__/merge_Tucker.cpython-39.pyc
+util/__pycache__/update_L_nograd.cpython-39.pyc
+util/__pycache__/update_Sigma.cpython-39.pyc
+util/__pycache__/update_X_nograd.cpython-39.pyc
